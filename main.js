@@ -47,7 +47,7 @@ class VaultFileRefresh extends obsidian.Plugin {
 
             for (const p of newPaths) {
                 try {
-                    await this.app.vault.adapter.reconcileFile(p);
+                    await this.app.vault.adapter.reconcileFile(p, p, false);
                 } catch (e) {
                     // file may have already been picked up
                 }
