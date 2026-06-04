@@ -12,11 +12,19 @@ class VaultFileRefresh extends obsidian.Plugin {
 
         this.addSettingTab(new RefreshSettingTab(this.app, this));
 
-        this.registerInterval(
-            window.setInterval(() => this.refresh(), DEFAULT_INTERVAL)
-        );
+        this.startPolling();
 
         console.log('VaultFileRefresh: loaded, polling every', DEFAULT_INTERVAL, 'ms');
+    }
+
+    startPolling() {
+        this.registerInterval(
+            window.setInterval(() => {
+                this.refresh().catch(e => {
+                    console.error('VaultFileRefresh: poll error, will retry next interval', e);
+                });
+            }, DEFAULT_INTERVAL)
+        );
     }
 
     async refresh() {
