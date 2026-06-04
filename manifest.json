@@ -1,0 +1,9 @@
+{
+    "id": "vault-file-refresh",
+    "name": "Vault File Refresh",
+    "version": "1.0.0",
+    "minAppVersion": "1.0.0",
+    "description": "Recursively polls for new files added to the vault from outside Obsidian and reconciles them automatically.",
+    "author": "Labtopia",
+    "isDesktopOnly": true
+}
