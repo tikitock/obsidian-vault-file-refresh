@@ -24,7 +24,9 @@ The community Auto Refresh plugin addresses a related issue but requires explici
 - Automatically tracks new folders as they are created
 - No configuration required — works out of the box
 - Removes stale paths from tracking when files are deleted
-- Logs reconciled files to the developer console for transparency
+- Command palette action ("Refresh vault now") to trigger and confirm a scan on demand, with a Notice showing what was reconciled
+- Failed reconciliation attempts are retried on the next poll instead of being silently dropped
+- Logs reconciled files (and any failures) to the developer console for transparency
 - Minimal performance footprint — async polling with no blocking operations
 
 ## Installation
@@ -54,7 +56,9 @@ To adjust the polling interval, open `main.js` and change the `DEFAULT_INTERVAL`
 
 ## Debugging
 
-Open the developer console (`Ctrl+Shift+I` or `Cmd+Option+I`) and filter for `VaultFileRefresh`. The plugin logs each reconciliation event with the affected file paths. Errors are reported under `VaultFileRefresh error`.
+Open the developer console (`Ctrl+Shift+I` or `Cmd+Option+I`) and filter for `VaultFileRefresh`. The plugin logs each reconciliation event with the affected file paths. Errors are reported under `VaultFileRefresh error` or `VaultFileRefresh: failed to reconcile`.
+
+If a file still isn't showing up, run **Refresh vault now** from the command palette (`Ctrl+P`) — it scans immediately and shows a Notice with the number of files reconciled or failed, instead of waiting up to 8 seconds and checking the console.
 
 ## Known Limitations
 
