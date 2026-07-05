@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+  attestations: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+
+      - name: Read tag message
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Read the tag's own message via the API rather than the local
+          # checkout's ref - actions/checkout's fetch/ref handling can hand
+          # back a ref pointing straight at the target commit instead of the
+          # annotated tag object, which would silently pull the commit
+          # message instead of the tag's own message.
+          ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/refs/tags/${GITHUB_REF_NAME}")
+          obj_type=$(echo "$ref_json" | jq -r '.object.type')
+          obj_sha=$(echo "$ref_json" | jq -r '.object.sha')
+          if [ "$obj_type" = "tag" ]; then
+            notes=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${obj_sha}" --jq '.message')
+          else
+            notes=$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${obj_sha}" --jq '.message')
+          fi
+          {
+            echo "notes<<VAULTFILEREFRESH_EOF"
+            echo "$notes"
+            echo "VAULTFILEREFRESH_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTES: ${{ steps.tag.outputs.notes }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" main.js manifest.json \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "$NOTES"

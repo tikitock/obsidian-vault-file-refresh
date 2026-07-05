@@ -138,7 +138,28 @@ class RefreshSettingTab extends obsidian.PluginSettingTab {
         containerEl.createEl('h2', { text: 'Vault File Refresh' });
         containerEl.createEl('p', { text: `Polling every ${DEFAULT_INTERVAL / 1000} seconds for new files added outside Obsidian.` });
         containerEl.createEl('p', { text: 'Run "Refresh vault now" from the command palette to trigger a scan immediately and see the result.' });
+
+        renderSupportFooter(containerEl);
     }
+}
+
+function renderSupportFooter(containerEl) {
+    containerEl.createEl('h3', { text: 'Support' });
+    containerEl.createEl('p', {
+        text: "Straight from the solar-powered TikiBarge, tools that don't exist that should make me nuts 🐒! If you feel the same, shoot me a message and keep the Kittehs in kibble:"
+    });
+
+    const kofiLink = containerEl.createEl('a');
+    kofiLink.href = 'https://ko-fi.com/labtopia';
+    kofiLink.target = '_blank';
+    kofiLink.rel = 'noopener';
+
+    const kofiImg = kofiLink.createEl('img');
+    kofiImg.src = 'https://storage.ko-fi.com/cdn/kofi6.png?v=6';
+    kofiImg.alt = 'Buy Me a Coffee at ko-fi.com';
+    kofiImg.height = 36;
+    kofiImg.style.height = '36px';
+    kofiImg.style.border = '0px';
 }
 
 module.exports = VaultFileRefresh;
