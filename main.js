@@ -9,6 +9,8 @@ class VaultFileRefresh extends obsidian.Plugin {
         this.knownPaths = new Set(
             this.app.vault.getFiles().map(f => f.path)
         );
+        this.knownMtimes = new Map();
+        await this.primeMtimes();
 
         this.addSettingTab(new RefreshSettingTab(this.app, this));
 
@@ -53,6 +55,7 @@ class VaultFileRefresh extends obsidian.Plugin {
             for (const p of [...this.knownPaths]) {
                 if (!diskPaths.has(p)) {
                     this.knownPaths.delete(p);
+                    this.knownMtimes.delete(p);
                 }
             }
 
@@ -76,6 +79,7 @@ class VaultFileRefresh extends obsidian.Plugin {
                         // Force an immediate content read so metadata/search
                         // resolve now rather than lazily on next file open.
                         await this.app.vault.cachedRead(file);
+                        await this.updateMtime(p);
                     }
                 } catch (e) {
                     failed.push(p);
@@ -90,10 +94,16 @@ class VaultFileRefresh extends obsidian.Plugin {
                 console.warn('VaultFileRefresh:', failed.length, 'file(s) failed to reconcile (will not retry):', failed);
             }
 
+            const changed = await this.reconcileModifiedFiles();
+            if (changed.length > 0) {
+                console.log('VaultFileRefresh: picked up', changed.length, 'externally modified file(s):', changed);
+            }
+
             if (manual) {
                 const parts = [];
                 parts.push(`Scanned ${diskPaths.size} file(s).`);
                 parts.push(reconciled.length > 0 ? `Reconciled ${reconciled.length}.` : 'Nothing new to reconcile.');
+                if (changed.length > 0) parts.push(`Picked up ${changed.length} modified file(s).`);
                 if (failed.length > 0) parts.push(`${failed.length} failed (see console).`);
                 new obsidian.Notice('VaultFileRefresh: ' + parts.join(' '));
             }
@@ -122,6 +132,62 @@ class VaultFileRefresh extends obsidian.Plugin {
         return result;
     }
 
+    async primeMtimes() {
+        for (const f of this.app.vault.getFiles()) {
+            if (f.extension === 'md') {
+                await this.updateMtime(f.path);
+            }
+        }
+    }
+
+    async updateMtime(path) {
+        try {
+            const stat = await this.app.vault.adapter.stat(path);
+            if (stat) this.knownMtimes.set(path, stat.mtime);
+        } catch (e) {
+            // stat can fail transiently; next poll will retry
+        }
+    }
+
+    // Obsidian's own vault watcher (chokidar) is what's unreliable here in the
+    // first place -- that's the whole reason this plugin exists. So even an
+    // already-known file (a Kanban board, a plain note) can sit stale after
+    // its content changes on disk, with nothing telling Obsidian to re-read
+    // it. reconcileFile is the same primitive already used above for
+    // brand-new files, which lets Obsidian's own normal update pipeline
+    // handle the redraw exactly as it would for any ordinary same-app edit --
+    // no forced tab reopen, no visible flash/blink. A previous community
+    // refresh plugin caused a blink across the whole interface; this only
+    // ever touches the exact path that actually changed on disk.
+    async reconcileModifiedFiles() {
+        const changed = [];
+        for (const path of [...this.knownPaths]) {
+            if (!path.endsWith('.md')) continue;
+
+            const previousMtime = this.knownMtimes.get(path);
+            const stat = await this.app.vault.adapter.stat(path).catch(() => null);
+            if (!stat) continue;
+
+            if (previousMtime === undefined || stat.mtime === previousMtime) {
+                this.knownMtimes.set(path, stat.mtime);
+                continue;
+            }
+
+            try {
+                await this.app.vault.adapter.reconcileFile(path, path, false);
+                const file = this.app.vault.getAbstractFileByPath(path);
+                if (file instanceof obsidian.TFile) {
+                    await this.app.vault.cachedRead(file);
+                }
+                changed.push(path);
+            } catch (e) {
+                console.error('VaultFileRefresh: failed to reconcile modified file', path, e);
+            }
+            this.knownMtimes.set(path, stat.mtime);
+        }
+        return changed;
+    }
+
     onunload() {
         console.log('VaultFileRefresh: unloaded');
     }
@@ -136,7 +202,7 @@ class RefreshSettingTab extends obsidian.PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         containerEl.createEl('h2', { text: 'Vault File Refresh' });
-        containerEl.createEl('p', { text: `Polling every ${DEFAULT_INTERVAL / 1000} seconds for new files added outside Obsidian.` });
+        containerEl.createEl('p', { text: `Polling every ${DEFAULT_INTERVAL / 1000} seconds for new files added outside Obsidian, and for existing files modified outside Obsidian (e.g. Kanban boards or notes edited by external scripts).` });
         containerEl.createEl('p', { text: 'Run "Refresh vault now" from the command palette to trigger a scan immediately and see the result.' });
 
         renderSupportFooter(containerEl);

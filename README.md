@@ -2,11 +2,14 @@
 
 Automatically picks up files added to your Obsidian vault from outside the app — no manual restart required.
 
-If you use Obsidian installed as a **Flatpak**, store your vault on a **network drive**, sync files via **scripts or AI tools**, or write to the vault from **external applications**, you have likely noticed that new files and folders do not appear in the file explorer until you restart Obsidian. This plugin fixes that.
+If you use Obsidian installed as a **Flatpak**, store your vault on a **network drive**, sync files via **scripts or AI tools**, or write to the vault from **external applications**, you have likely noticed that new files and folders do not appear in the file explorer until you restart Obsidian — or that a file already open in a tab (a Kanban board, a note being updated by an external script) shows stale content until you manually close and reopen it. This plugin fixes both.
 
 ## What It Does
 
-Vault File Refresh runs a lightweight background poller that recursively scans your entire vault every 8 seconds. When it detects files that exist on disk but are not yet known to Obsidian, it reconciles them — making them immediately available in the file explorer, search, graph view, and Dataview queries without any manual intervention.
+Vault File Refresh runs a lightweight background poller that recursively scans your entire vault every 8 seconds.
+
+- Files that exist on disk but aren't yet known to Obsidian get reconciled — immediately available in the file explorer, search, graph view, and Dataview queries.
+- Files Obsidian already knows about, but whose content changed on disk since the last poll, get silently reconciled too — so an open Kanban board or note picks up the change through Obsidian's own normal update pipeline, without a forced tab reopen and without any visible flash/blink across the interface.
 
 ## Why This Happens
 
@@ -22,6 +25,7 @@ The community Auto Refresh plugin addresses a related issue but requires explici
 
 - Fully recursive — covers the entire vault including all nested subfolders
 - Automatically tracks new folders as they are created
+- Picks up content changes to files already open in a tab (Kanban boards, notes) without a manual close/reopen — no interface-wide flash or blink, only the specific file that changed is touched
 - No configuration required — works out of the box
 - Removes stale paths from tracking when files are deleted
 - Command palette action ("Refresh vault now") to trigger and confirm a scan on demand, with a Notice showing what was reconciled
@@ -69,6 +73,7 @@ If a file still isn't showing up, run **Refresh vault now** from the command pal
 
 - Obsidian installed as a Flatpak on Linux
 - Writing notes or documents to your vault from external scripts or automation tools
+- A Kanban board (or any note) updated by an external process while a tab has it open
 - Using AI tools such as Claude Code with the Obsidian Local REST API plugin
 - Syncing vault content from another machine or service that writes files directly
 - Storing your vault on a NAS or network-mounted drive
